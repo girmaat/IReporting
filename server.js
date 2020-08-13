@@ -20,11 +20,6 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
-var users = require("./routes/users");
-var session = require("./routes/session");
-var sharedNews = require("./routes/sharedNews");
-var homeNews = require("./routes/homeNews");
-
 var app = express();
 app.enable("trust proxy"); // Since we are behind Nginx load balancing with Elastic Beanstalk
 
@@ -87,12 +82,12 @@ app.use(express.static(path.join(__dirname, "build")));
 // be freed up to keep processing to a minimum on its servicing threads.
 //var node2 = cp.fork('./worker/app_FORK.js', [], { execArgv: ['--inspect=9229'] });
 var node2 = cp.fork("./worker/app_FORK.js");
-// node2.on("exit", function (code) {
-//   console.log("Worker crashed and was restarted.", code);
-//   node2 = undefined;
-//   // We  don't want to restart if this was a mocha test run.
-//   if (!server.testrun) node2 = cp.fork("./worker/app_FORK.js");
-// });
+node2.on("exit", function (code) {
+  console.log("Worker crashed and was restarted.", code);
+  node2 = undefined;
+  // We  don't want to restart if this was a mocha test run.
+  if (!server.testrun) node2 = cp.fork("./worker/app_FORK.js");
+});
 
 //
 // MongoDB database connection initialization
@@ -107,7 +102,7 @@ MongoClient.connect(
   function (err, client) {
     assert.equal(null, err);
     db.client = client;
-    db.collection = client.db("newswatcherdb").collection("newswatcher");
+    db.collection = client.db("NewsWatcherdb").collection("NewsWatcher");
     console.log("Connected to MongoDB server");
   }
 );
@@ -134,7 +129,11 @@ app.use(function (req, res, next) {
   next();
 });
 
-//
+var users = require("./backend/routes/users");
+var session = require("./backend/routes/session");
+var sharedNews = require("./backend/routes/sharedNews");
+var homeNews = require("./backend/routes/homeNews");
+
 // Rest API routes
 app.use("/api/users", users);
 app.use("/api/sessions", session);
